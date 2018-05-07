@@ -1,0 +1,50 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: rabbitmq-to-kafka
+  namespace: default
+spec:
+  replicas: 1
+  minReadySeconds: 5
+  template:
+    metadata:
+      labels:
+        run: rabbitmq-to-kafka
+    spec:
+      nodeSelector:
+        run_apps: "true"
+      containers:
+        - name: rabbitmq-to-kafka
+          image: registry.sirdata.fr/rabbitmq-to-kafka:{VERSION}
+          imagePullPolicy: Always
+          command:
+            - /rabbitmq-to-kafka
+          args:
+            #- -rabbitmq-user=$(RABBITMQ_USER) #TODO
+            #- -rabbitmq-pass=$(RABBITMQ_PASS) #TODO
+            #- -verbose
+            - -rabbitmq-exchange=REQUESTS_EXCHANGE
+            - -rabbitmq-queue=KAFKA_QUEUE
+            - -rabbitmq-host=rabbitmq-front
+            - -rabbitmq-port=5672
+            - -kafka-brokers=kafka:9092
+            - -kafka-topic=requests
+            - -kafka-client-id=rabbitmq-to-kafka
+          volumeMounts:
+            - name: tz-config
+              mountPath: /etc/localtime
+              readOnly: true
+            - name: no-sa
+              mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+              readOnly: true
+          resources:
+            limits:
+              cpu: 1
+              memory: 10Gi
+      volumes:
+        - name: tz-config
+          hostPath:
+            path: /usr/share/zoneinfo/Europe/Paris
+        - name: no-sa
+          emptyDir: {}
